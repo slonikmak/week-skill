@@ -1,7 +1,7 @@
 {
   "name": "week-skill",
   "version": "1.0.0",
-  "description": "",
+  "description": "CLI tool and Node.js library for WEEEK Project Management API",
   "main": "weeek-api.js",
   "bin": {
     "weeek": "./weeek-cli.js"

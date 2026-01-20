@@ -1,81 +1,81 @@
 # WEEEK API Toolkit
 
-Мощный набор инструментов для работы с платформой управления проектами [WEEEK](https://weeek.net). Включает в себя удобную CLI-утилиту и Node.js библиотеку для интеграции.
+A powerful toolkit for working with the [WEEEK](https://weeek.net) project management platform. Includes a convenient CLI utility and a Node.js library for integration.
 
-## 🚀 Установка
+## 🚀 Installation
 
-### Вариант 1: Установка напрямую с GitHub (для использования CLI)
-Чтобы команда `weeek` стала доступна глобально в вашей системе:
+### Option 1: Install directly from GitHub (for CLI usage)
+To make the `weeek` command available globally on your system:
 
 ```bash
-npm install -g github:ваш-юзернейм/week-skill
+npm install -g github:slonikmak/week-skill
 ```
 
-### Вариант 2: Для разработки
-1. Клонируйте репозиторий:
+### Option 2: For Development
+1. Clone the repository:
    ```bash
-   git clone https://github.com/ваш-юзернейм/week-skill.git
+   git clone https://github.com/slonikmak/week-skill.git
    cd week-skill
    ```
-2. Установите зависимости и создайте симлинк:
+2. Install dependencies and link:
    ```bash
    npm install
    npm link
    ```
-Теперь команда `weeek` доступна в терминале.
+Now the `weeek` command is available in your terminal.
 
-## ⚙️ Настройка
+## ⚙️ Configuration
 
-Для работы инструменту требуется API-ключ.
-1. Получите токен в настройках аккаунта WEEEK.
-2. Создайте файл `.env` в корне проекта (или там, где запускаете скрипт) или экспортируйте переменную окружения:
+The tool requires an API Key to function.
+1. Generate a token in your WEEEK account settings.
+2. Create a `.env` file in the project root (or wherever you run the script) or export an environment variable:
 
 ```env
-WEEEK_API_KEY=ваш_токен_здесь
+WEEEK_API_KEY=your_token_here
 ```
 
-## 🖥️ Использование CLI
+## 🖥️ CLI Usage
 
-После установки используйте команду `weeek`.
+After installation, use the `weeek` command.
 
-### 🧠 Умные команды (Smart Actions)
+### 🧠 Smart Actions (High-Level)
 
-#### 📋 Просмотр доски
-Находит доску по имени и показывает задачи по колонкам.
+#### 📋 View Board
+Finds a board by name (fuzzy match) and displays columns with tasks.
 ```bash
 weeek board "Release 2.0"
 ```
 
-#### 🆕 Создание задачи
-Создает задачу, автоматически определяя ID доски, колонки и исполнителя.
+#### 🆕 Create Task
+Creates a task by automatically resolving Board ID, Column ID, and Assignee ID.
 ```bash
-weeek create "Исправить баг" --board "Release" --col "Backlog" --prio 2 --assignee "Ivan"
+weeek create "Fix login bug" --board "Release" --col "Backlog" --prio 2 --assignee "Ivan"
 ```
 
-#### 👁️ Просмотр задачи
-Показывает детали задачи: описание (без HTML), приоритет, статус и подзадачи.
+#### 👁️ Show Task Details
+Shows task details: description (HTML stripped), priority, status, and subtasks.
 ```bash
 weeek show 893
 ```
 
-#### 🚚 Перемещение задачи
-Перемещает задачу в другую колонку (по имени).
+#### 🚚 Move Task
+Moves a task to another column (by column name).
 ```bash
-weeek move 893 "В работу"
+weeek move 893 "Done"
 ```
 
-#### 👥 Пользователи и Назначение
-Работа с командой без использования UUID.
+#### 👥 Users & Assignment
+Work with your team using names instead of UUIDs.
 ```bash
-# Список всех пользователей
+# List all workspace users
 weeek users
 
-# Назначить исполнителя (поиск по имени/email)
+# Assign a user (search by name/email)
 weeek assign 893 "Maxim"
 ```
 
-#### ⏱️ Таймер
-Управление трекингом времени.
+#### ⏱️ Timer
+Manage time tracking.
 ```bash
 weeek timer start 893
 weeek timer stop 893
@@ -83,50 +83,52 @@ weeek timer stop 893
 
 ---
 
-### 🔧 Низкоуровневые команды (API Explorer)
-Прямой доступ к API для отладки или специфичных запросов.
+### 🔧 Low-Level Commands (API Explorer)
+Direct access to the API for debugging or specific queries.
 
 ```bash
-# Список всех доступных эндпоинтов
+# List all available API tags
 weeek tags
+
+# List endpoints for a tag
 weeek endpoints Task
 
-# Сырой запрос (GET)
+# Raw request (GET)
 weeek run GET tm/projects
 
-# Сырой запрос с параметрами
+# Raw request with parameters
 weeek run GET tm/tasks -p "projectId=123"
 ```
 
 ---
 
-## 📦 Использование как библиотеки
+## 📦 Using as a Library
 
-Вы можете использовать `WeeekClient` в своих Node.js скриптах.
+You can use `WeeekClient` in your own Node.js scripts.
 
-1. Установите пакет в свой проект:
+1. Install the package in your project:
    ```bash
-   npm install github:ваш-юзернейм/week-skill
+   npm install github:slonikmak/week-skill
    ```
 
-2. Импортируйте и используйте:
+2. Import and use:
 
 ```javascript
 import { WeeekClient } from 'week-skill';
 
-const client = new WeeekClient('ваш_токен_здесь');
+const client = new WeeekClient('your_token_here');
 
 async function main() {
-    // Получить все проекты
+    // Get all projects
     const projects = await client.getProjects();
     console.log(projects);
 
-    // Найти доску по названию
+    // Find board by name
     const boards = await client.findBoard('Release');
     
-    // Создать задачу
+    // Create a task
     const newTask = await client.createTask({
-        title: 'Новая задача из скрипта',
+        title: 'New task from script',
         boardId: boards[0].id,
         priority: 1
     });
@@ -135,6 +137,6 @@ async function main() {
 main();
 ```
 
-## Требования
+## Requirements
 - Node.js >= 16
-- Файл `weeek_spec.json` (OpenAPI спецификация) должен находиться в пакете (он включен в репозиторий).
+- `weeek_spec.json` (OpenAPI specification) must be present in the package (included in the repo).
