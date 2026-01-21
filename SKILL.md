@@ -23,6 +23,16 @@ WEEEK_API_KEY=your_key_here
 
 The main entry point is `weeek-cli.js`.
 
+### 0. 🔍 Discovery (Start here)
+**Goal:** Find Project or Board IDs to work with.
+- **List Projects:** `node weeek-cli.js projects`
+- **List Boards:** `node weeek-cli.js boards [projectId]`
+- **Usage:**
+  ```bash
+  node weeek-cli.js projects
+  node weeek-cli.js boards 1
+  ```
+
 ### 1. 📋 Board & Context
 **Goal:** Understand the current state of tasks on a specific board.
 - **Command:** `board <name>`
@@ -40,9 +50,11 @@ The main entry point is `weeek-cli.js`.
   - `--col <name>`: Target column name.
   - `--assignee <name>`: User name to assign (fuzzy match).
   - `--prio <0-3>`: Priority (0=Low, 1=Med, 2=High, 3=Hold).
+  - `--desc <text>`: Task description.
+  - `--subtasks "ST1, ST2"`: List of subtasks to create.
 - **Usage:**
   ```bash
-  node weeek-cli.js create "Fix login bug" --board "App" --col "Backlog" --assignee "Ivan" --prio 2
+  node weeek-cli.js create "Fix login bug" --board "App" --col "Backlog" --assignee "Ivan" --prio 2 --desc "Bug in oauth flow" --subtasks "Check logs, Fix bug, Test"
   ```
 
 ### 3. 👁️ Task Inspection

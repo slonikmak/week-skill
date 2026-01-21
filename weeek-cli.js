@@ -39,19 +39,6 @@ function getTags(spec) {
     return [...new Set([...tags.map(t => t.name || t), ...pathTags])].sort();
 }
 
-function stripHtml(html) {
-    if (!html) return '';
-    return html
-        .replace(/<br\s*\/?>/gi, '\n')
-        .replace(/<\/p>/gi, '\n')
-        .replace(/<[^>]+>/g, '')
-        .replace(/&nbsp;/g, ' ')
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .trim();
-}
-
 // --- CLI Config ---
 
 program
@@ -127,7 +114,9 @@ program
     .option('-p, --params <query>', 'Query parameters (e.g. "foo=bar")')
     .action(async (method, path, options) => {
         let params = null;
-        if (options.params) params = new URLSearchParams(options.params);
+        if (options.params) {
+            params = Object.fromEntries(new URLSearchParams(options.params));
+        }
         let body = null;
         if (options.data) {
             try { body = JSON.parse(options.data); } catch { body = options.data; }
@@ -150,28 +139,15 @@ program
     .argument('<name>', 'Board name (partial match allowed)')
     .action(async (name) => {
         try {
-            console.log(chalk.dim(`Searching for board "${name}"...`));
-            const matches = await client.findBoard(name);
-            
-            if (matches.length === 0) return console.log(chalk.red('No boards found matching that name.'));
-            if (matches.length > 1) {
-                console.log(chalk.yellow(`Found ${matches.length} boards. Please be more specific:`));
-                matches.forEach(b => console.log(`- ${chalk.bold(b.name)} (ID: ${b.id}) [Project: ${b.projectName}]`));
-                return;
-            }
-            const board = matches[0];
-            console.log(chalk.bold.green(`\nBoard: ${board.name} (ID: ${board.id})`));
-            console.log(chalk.dim(`Project: ${board.projectName}`));
+            console.log(chalk.dim(`Fetching board "${name}"...`));
+            const board = await client.getBoardWithContext(name);
 
-            console.log(chalk.dim('Fetching columns and tasks...'));
-            const [columns, tasks] = await Promise.all([
-                client.getColumns(board.id),
-                client.getTasks({ boardId: board.id })
-            ]);
+            console.log(chalk.bold.green(`\nBoard: ${board.name} (ID: ${board.id})`));
+            console.log(chalk.dim(`Project: ${board.projectName || 'N/A'}`));
 
             console.log(chalk.bold.blue(`\nColumns & Tasks:`));
-            columns.forEach(col => {
-                const colTasks = tasks.filter(t => t.boardColumnId === col.id);
+            board.columns.forEach(col => {
+                const colTasks = board.tasks.filter(t => t.boardColumnId === col.id);
                 console.log(chalk.bold.magenta(`\n[${col.name.toUpperCase()}] (ID: ${col.id}) - ${colTasks.length} tasks`));
                 if (colTasks.length === 0) {
                     console.log(chalk.dim('  (empty)'));
@@ -194,22 +170,9 @@ program
     .argument('<columnName>', 'Target column name (partial match allowed)')
     .action(async (taskId, columnName) => {
         try {
-            const task = await client.getTask(taskId);
-            if (!task) return console.error(chalk.red('Task not found.'));
-            if (!task.boardId) return console.error(chalk.red('Task is not assigned to a board.'));
-
-            const columns = await client.getColumns(task.boardId);
-            const targetCol = columns.find(c => c.name.toLowerCase().includes(columnName.toLowerCase()));
-            
-            if (!targetCol) {
-                console.log(chalk.red(`Column matching "${columnName}" not found on board #${task.boardId}.`));
-                console.log('Available columns:', columns.map(c => c.name).join(', '));
-                return;
-            }
-
-            console.log(chalk.dim(`Moving task #${taskId} to column "${targetCol.name}" (ID: ${targetCol.id})...`));
-            await client.moveTask(taskId, targetCol.id);
-            console.log(chalk.green(`\nSuccess! Task #${taskId} moved to "${targetCol.name}".`));
+            console.log(chalk.dim(`Moving task #${taskId} to "${columnName}"...`));
+            await client.moveTaskToColumn(taskId, columnName);
+            console.log(chalk.green(`\nSuccess! Task #${taskId} moved.`));
         } catch (err) {
             console.error(chalk.red('Error:'), err.message);
         }
@@ -224,57 +187,23 @@ program
     .option('-u, --assignee <name>', 'Assignee name (fuzzy)')
     .option('-p, --prio <number>', 'Priority (0-3)', '0')
     .option('-d, --desc <text>', 'Description')
+    .option('-s, --subtasks <titles>', 'Comma-separated subtask titles')
     .action(async (title, options) => {
         try {
-            let boardId, columnId, assigneeId;
-
-            // 1. Resolve Board
-            if (options.board) {
-                const matches = await client.findBoard(options.board);
-                if (matches.length === 0) return console.error(chalk.red(`Board "${options.board}" not found.`));
-                if (matches.length > 1) return console.error(chalk.red(`Multiple boards found for "${options.board}". Be specific.`));
-                boardId = matches[0].id;
-            }
-
-            // 2. Resolve Column (requires board)
-            if (options.col && !boardId) {
-                return console.error(chalk.red('You must specify --board to use --col.'));
-            }
-            if (boardId) {
-                const columns = await client.getColumns(boardId);
-                if (options.col) {
-                    const col = columns.find(c => c.name.toLowerCase().includes(options.col.toLowerCase()));
-                    if (!col) return console.error(chalk.red(`Column "${options.col}" not found on board.`));
-                    columnId = col.id;
-                } else if (columns.length > 0) {
-                    columnId = columns[0].id; // Default to first column
-                }
-            }
-
-            // 3. Resolve Assignee
-            if (options.assignee) {
-                const user = await client.findUser(options.assignee);
-                if (!user) return console.error(chalk.red(`User "${options.assignee}" not found.`));
-                assigneeId = user.id;
-            }
-
-            // 4. Create Task
-            const payload = {
-                title,
-                description: options.desc || '',
-                priority: parseInt(options.prio),
-                boardId,
-                boardColumnId: columnId,
-                assignees: assigneeId ? [assigneeId] : []
-            };
-
             console.log(chalk.dim('Creating task...'));
-            const task = await client.createTask(payload);
-            
-            console.log(chalk.green(`\nTask created successfully! ID: ${chalk.bold(task.id)}`));
-            if (boardId) console.log(`Board: ${boardId} | Column: ${columnId || 'None'}`);
-            if (assigneeId) console.log(`Assignee: ${assigneeId}`);
+            const subtasks = options.subtasks ? options.subtasks.split(',').map(s => s.trim()) : [];
+            const task = await client.createTaskDetailed({
+                title,
+                boardName: options.board,
+                columnName: options.col,
+                assigneeName: options.assignee,
+                priority: options.prio,
+                description: options.desc,
+                subtasks
+            });
 
+            console.log(chalk.green(`\nTask created successfully! ID: ${chalk.bold(task.id)}`));
+            if (task.boardId) console.log(`Board ID: ${task.boardId} | Column ID: ${task.boardColumnId || 'None'}`);
         } catch (err) {
             console.error(chalk.red('Error:'), err.message);
         }
@@ -288,7 +217,7 @@ program
         try {
             console.log(chalk.dim(`Fetching task #${taskId}...`));
             const task = await client.getTask(taskId);
-            
+
             if (!task) return console.error(chalk.red('Task not found.'));
 
             console.log(chalk.bold.blue(`\n[#${task.id}] ${task.title}`));
@@ -296,15 +225,15 @@ program
                 const priorities = ['Low', 'Medium', 'High', 'Hold'];
                 console.log(chalk.yellow(`Priority: ${priorities[task.priority] || task.priority}`));
             }
-            
+
             console.log(chalk.dim(`Status: ${task.isCompleted ? 'Completed' : 'Open'}`));
 
             if (task.assignees && task.assignees.length > 0) {
-                 console.log(`Assignees: ${task.assignees.join(', ')}`);
+                console.log(`Assignees: ${task.assignees.join(', ')}`);
             }
 
             console.log(chalk.bold('\nDescription:'));
-            console.log(stripHtml(task.description) || chalk.dim('(No description)'));
+            console.log(WeeekClient.stripHtml(task.description) || chalk.dim('(No description)'));
 
             if (task.subTasks && task.subTasks.length > 0) {
                 console.log(chalk.bold('\nSubtasks:'));
@@ -390,6 +319,32 @@ program
         } catch (err) {
             console.error(chalk.red('Error:'), err.message);
         }
+    });
+
+program
+    .command('boards')
+    .description('List boards (optionally filtered by project ID)')
+    .argument('[projectId]', 'Project ID')
+    .action(async (projectId) => {
+        try {
+            console.log(chalk.dim(projectId ? `Fetching boards for project ${projectId}...` : 'Fetching all boards...'));
+            const boards = await client.getBoards(projectId);
+            console.log(chalk.bold.blue('\nBoards:'));
+            boards.forEach(b => {
+                const projectInfo = b.projectName ? ` [Project: ${b.projectName}]` : '';
+                console.log(`- ${chalk.bold(b.name)} (ID: ${b.id})${projectInfo}`);
+            });
+        } catch (err) {
+            console.error(chalk.red('Error:'), err.message);
+        }
+    });
+
+program
+    .command('help')
+    .description('Show SKILL.md documentation')
+    .action(async () => {
+        const help = await client.getHelp();
+        console.log(help);
     });
 
 program.parse();
