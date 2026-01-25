@@ -7,18 +7,6 @@ description: Manage WEEEK tasks, boards, and users. View boards, create/move tas
 
 This skill provides a comprehensive CLI wrapper for the WEEEK API, enabling efficient task and board management directly from the terminal.
 
-## Setup
-
-Run once to install dependencies:
-```bash
-npm install
-```
-
-Ensure you have a `.env` file with your API key:
-```
-WEEEK_API_KEY=your_key_here
-```
-
 ## Usage
 
 The main entry point is `weeek-cli.js`.
