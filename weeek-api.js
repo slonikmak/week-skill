@@ -258,16 +258,12 @@ export class WeeekClient {
 
     async getHelp() {
         try {
-            // Correct way to get directory name in ESM on Node.js
-            const __dirname = new URL('.', import.meta.url).pathname;
-            const skillPath = resolve(__dirname, 'SKILL.md');
+            // Convert module URL -> platform path reliably (works on Windows and POSIX)
+            const { fileURLToPath } = await import('url');
+            const moduleDir = fileURLToPath(new URL('.', import.meta.url));
+            const skillPath = resolve(moduleDir, 'SKILL.md');
 
-            // Fix for Windows paths starting with /C:/...
-            const fixedPath = (process.platform === 'win32' && skillPath.startsWith('/'))
-                ? skillPath.substring(1)
-                : skillPath;
-
-            return await fs.readFile(fixedPath, 'utf8');
+            return await fs.readFile(skillPath, 'utf8');
         } catch (err) {
             // Fallback for CLI and other environments
             try {
